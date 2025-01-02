@@ -10178,11 +10178,18 @@ end)()
 local Settings = {}
 local Apps = {}
 local env = {}
-local service = setmetatable({},{__index = function(self,name)
-	local serv = cloneref(game:GetService(name))
-	self[name] = serv
-	return serv
-end})
+local service = {}
+setmetatable(service, {
+    __index = function(self, name)
+        local serviceInstance = game:GetService(name)
+        if serviceInstance then
+            local clonedService = cloneref(serviceInstance)
+            rawset(self, name, clonedService)
+            return clonedService
+        end
+        return nil
+    end
+})
 local plr = service.Players.LocalPlayer or service.Players.PlayerAdded:wait()
 
 local create = function(data)
@@ -10313,12 +10320,18 @@ Main = (function()
 			end
 		end
 	end
-
     Main.InitEnv = function()
-        setmetatable(env, {__newindex = function(self, name, func)
-            if not func then Main.MissingEnv[#Main.MissingEnv + 1] = name return end
-            rawset(self, name, func)
-        end})
+        Main.MissingEnv = Main.MissingEnv or {}
+        setmetatable(env, {
+            __newindex = function(_, name, value)
+                if value == nil then
+                    table.insert(Main.MissingEnv, name)
+                else
+                    rawset(env, name, value)
+                end
+            end
+        })
+    
 
         -- file
         env.readfile = readfile
@@ -10343,7 +10356,7 @@ Main = (function()
 
         -- other
         --env.setfflag = setfflag
-        env.request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+        env.request = (http and http.request) or http_request or (fluxus and fluxus.request) or request
         env.decompile = decompile or (env.getscriptbytecode and (function()
             local success, result = pcall(function()
                 loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/refs/heads/main/AdvancedDecompilerV3/init.lua"))()
